@@ -60,7 +60,7 @@ process.on('uncaughtException', (err) => {
 });
 
 // Schedule daily at 16:50 IST (3:50 PM)
-cron.schedule('50 16 * * *', async () => {
+cron.schedule('40 12 * * *', async () => {
   console.log('Scheduled run: Running daily summary report...');
   try {
     const fn = await loadReporter();
