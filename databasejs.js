@@ -14,6 +14,7 @@ const pool = mysql.createPool({
 });
 
 /**
+ * 
  * Inserts the daily Slack metrics into the dailyreport table.
  * @param {string} dateString - The date of the report (e.g., '2025-11-17').
  * @param {number} joins - Number of people joined.

@@ -5,6 +5,7 @@ import { generateDailySummary } from './reporter.js';
 // Run once immediately
 //generateDailySummary().catch(console.error);
 
+
 // Schedule daily at 09:00 IST
 cron.schedule('50 16 * * *', async () => {
   console.log('Running daily summary report...');

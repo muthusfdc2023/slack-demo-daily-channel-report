@@ -41,6 +41,7 @@ async function generateDailySummary() {
     let totalEmojis = 0;
     let totalJoins = 0;
     let cursor;
+    
 
     try {
         // 1. Fetching Data and Counting Metrics (Unchanged)
