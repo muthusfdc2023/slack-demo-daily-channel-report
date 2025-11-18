@@ -41,7 +41,7 @@ async function generateDailySummary() {
     let totalEmojis = 0;
     let totalJoins = 0;
     let cursor;
-    
+
 
     try {
         // 1. Fetching Data and Counting Metrics (Unchanged)
@@ -70,7 +70,8 @@ async function generateDailySummary() {
                 }
             }
             cursor = response.response_metadata?.next_cursor;
-        } while (cursor);
+        } while 
+        (cursor);
 
         // --- DATABASE SAVE ---
         const dbDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD for MySQL DATE type
