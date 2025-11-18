@@ -1,19 +1,39 @@
 // Inside server.js or a dedicated scheduler.js file
 import cron from 'node-cron';
+import express from 'express';
+import dotenv from 'dotenv';
 import { generateDailySummary } from './reporter.js';
 
-// Run once immediately
-//generateDailySummary().catch(console.error);
+dotenv.config();
 
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Schedule daily at 09:00 IST
+// Health check endpoint (Render uses this to verify service is running)
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
+// Optional: endpoint to manually trigger the report
+app.post('/run-report', async (req, res) => {
+  try {
+    await generateDailySummary();
+    res.status(200).send('Report triggered successfully');
+  } catch (err) {
+    res.status(500).send(`Error: ${err.message}`);
+  }
+});
+
+// Start the HTTP server
+app.listen(PORT, () => {
+  console.log(`HTTP server listening on port ${PORT}`);
+});
+
+// Schedule daily at 16:50 IST (3:50 PM)
 cron.schedule('50 16 * * *', async () => {
   console.log('Running daily summary report...');
   await generateDailySummary();
 }, { timezone: 'Asia/Kolkata' });
-
-// Your existing server start code follows...
-// app.listen(...)
 
 
 
