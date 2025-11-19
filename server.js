@@ -18,7 +18,7 @@ app.listen(PORT, () => {
 
 // --- CRON JOB ---
 cron.schedule(
-  "25 11 * * *",
+  "*/5 * * * *",
   () => {
     console.log("Running daily summary report...");
     generateDailySummary();
