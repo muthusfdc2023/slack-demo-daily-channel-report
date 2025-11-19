@@ -4,7 +4,7 @@ import { generateDailySummary } from './reporter.js';
 
 // Schedule the report to run every day at 9:00 AM (e.g., 0 9 * * *)
 // Format is: minute hour day-of-month month day-of-week
-cron.schedule('31 10 * * *', () => {
+cron.schedule('45 10 * * *', () => {
   console.log('Running daily summary report...');
   generateDailySummary();
 }, {
