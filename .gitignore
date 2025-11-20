@@ -1,12 +1,3 @@
 /node_modules
 /tmp_push_repo
 .env
-app.js
-db-test.mjs
-db.js
-index.js
-motivation.js
-postcontroller.js
-utils.js
-slackfeatures.js
-slackfull.js
