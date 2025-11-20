@@ -22,7 +22,7 @@ async function processScheduleCommand(payload) {
         // 1. **Data Logic:** Update the database based on commandText
         // await database.updateSchedule(commandText, payload.user_id);
 
-        // 2. **Report Generation:** Generate the summary message
+        // 2. **Report Generation:** Generate the summary messageg
         const summary = `Schedule updated! New summary: ${commandText}`;
 
         // 3. **Post to Channel:** Send the final message back to Slack
