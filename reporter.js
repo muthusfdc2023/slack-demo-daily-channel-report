@@ -4,7 +4,7 @@
 import { WebClient } from "@slack/web-api";
 import dotenv from "dotenv";
 //import { insertDailyReport } from "./databasejs.js"; // Import the database function
-dotenv.config();
+dotenv.config();  //executes the function that reads the key-value pairs from the environment file and attaches them to process.env
 
 // --- Configuration ---
 const TARGET_CHANNEL_ID = process.env.REPORT_CHANNEL_ID; 
@@ -15,7 +15,8 @@ const client = new WebClient(process.env.SLACK_BOT_TOKEN);
 /**
  * Fetches channel history for the last 24 hours, calculates metrics, saves to DB, and posts a summary.
  */
-async function generateDailySummary() {
+async function generateDailySummary() 
+{
     // Calculate Unix timestamp for 24 hours ago
     const dbModule = await import("./databasejs.js");
     const insertDailyReport = dbModule.insertDailyReport;
@@ -28,7 +29,8 @@ async function generateDailySummary() {
             // conversations.info returns num_members
             totalMembers = infoResponse.channel.num_members || 0;
         }
-    } catch (e) {
+    } 
+    catch (e) {
         console.error("Error fetching total channel members:", e.message);
     }
 
@@ -70,7 +72,8 @@ async function generateDailySummary() {
                 }
             }
             cursor = response.response_metadata?.next_cursor;
-        } while 
+        } 
+        while 
         (cursor);
 
         // --- DATABASE SAVE ---
@@ -140,7 +143,9 @@ async function generateDailySummary() {
 
         console.log(`Report successfully posted to Slack.`);
 
-    } catch (error) {
+    } 
+    catch (error)
+     {
         console.error("Failed to run daily report (Slack logic):", error);
     }
 }
