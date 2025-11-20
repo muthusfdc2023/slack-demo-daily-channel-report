@@ -1,32 +1,23 @@
-
 import { App } from "@slack/bolt";
 import cron from "node-cron";
+import express from "express";
+import bodyParser from "body-parser";
 import dotenv from "dotenv";
-//const app = express();
-const { processScheduleCommand } = require('./reporter');
-import { generateDailySummary, generateSlackStats, saveToDB, postSummary } from "./reporter.js";
 
 dotenv.config();
 
+// EXPRESS APP -------------------------
+const expressApp = express();
 const PORT = process.env.PORT || 3000;
 
-// app.post('/slack/event/schedule', (req, res) => {
-//     // A. Send an immediate 200 OK acknowledgment to Slack
-//     res.status(200).send();
+console.log("Loaded SLASH_SECRET:", process.env.SLASH_SECRET);
 
-//     const payload = req.body; // The data sent by Slack
+expressApp.use(bodyParser.urlencoded({ extended: true }));
 
-//     // B. Call the function in reporter.js to handle the long-running logic
-//     processScheduleCommand(payload);
-
-//     // The actual response/update to the Slack channel will happen inside reporter.js
-// });
-
-
-const app = new App({
+// BOLT APP ----------------------------
+const boltApp = new App({
     token: process.env.SLACK_BOT_TOKEN,
     signingSecret: process.env.SLACK_SIGNING_SECRET,
-    // Render health check support (optional, but good practice)
     customRoutes: [
         {
             path: '/',
@@ -39,12 +30,22 @@ const app = new App({
     ],
 });
 
-// Slash Command Endpoint (Bolt handles verification)
-app.command('/dailyreport', async ({ ack, body, client }) => {
+// IMPORT FUNCTIONS ---------------------
+import {
+    generateDailySummary,
+    generateSlackStats,
+    saveToDB,
+    postSummary,
+    processScheduleCommand
+} from "./reporter.js";
+
+// SLASH COMMAND ------------------------
+boltApp.command('/dailyreport', async ({ ack, body, client }) => {
     await ack();
+
     const channelId = body.channel_id;
+
     try {
-        // Use the refactored functions from reporter.js
         const stats = await generateSlackStats(channelId, client);
         await saveToDB(channelId, stats);
         await postSummary(channelId, stats, client, 'Last 24 hours report (slash)');
@@ -57,15 +58,22 @@ app.command('/dailyreport', async ({ ack, body, client }) => {
     }
 });
 
-// Cron Job (Every 5 minutes for testing)
-cron.schedule("*/5 * * * *", () => {
-    console.log("Running Scheduled Job...");
-    generateDailySummary();
-}, {
-    timezone: "Asia/Kolkata"
+// CRON JOB ------------------------------
+cron.schedule(
+    "*/5 * * * *",
+    () => {
+        console.log("Running Scheduled Job...");
+        generateDailySummary();
+    },
+    { timezone: "Asia/Kolkata" }
+);
+
+// START BOTH SERVERS -------------------
+expressApp.listen(PORT, () => {
+    console.log(`Express server running on port ${PORT}`);
 });
 
 (async () => {
-    await app.start(PORT);
-    console.log(`⚡️ Bolt app is running on port ${PORT}`);
+    await boltApp.start(process.env.BOLT_PORT || 3001);
+    console.log(`⚡️ Bolt app is running on port ${process.env.BOLT_PORT || 3001}`);
 })();

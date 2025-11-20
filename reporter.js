@@ -8,13 +8,8 @@ dotenv.config();
 const TARGET_CHANNEL_ID = process.env.REPORT_CHANNEL_ID;
 const client = new WebClient(process.env.SLACK_BOT_TOKEN);
 
-// reporter.js
-
-// Import necessary modules (database client, Slack WebClient)
-// const { WebClient } = require('@slack/web-api');
-// const web = new WebClient(process.env.SLACK_BOT_TOKEN);
-
-async function processScheduleCommand(payload) {
+// New function for handling schedule commands
+export async function processScheduleCommand(payload) {
     try {
         const commandText = payload.text;
         const channelId = payload.channel_id;
@@ -22,11 +17,11 @@ async function processScheduleCommand(payload) {
         // 1. **Data Logic:** Update the database based on commandText
         // await database.updateSchedule(commandText, payload.user_id);
 
-        // 2. **Report Generation:** Generate the summary messageg
+        // 2. **Report Generation:** Generate the summary message
         const summary = `Schedule updated! New summary: ${commandText}`;
 
         // 3. **Post to Channel:** Send the final message back to Slack
-        await web.chat.postMessage({
+        await client.chat.postMessage({
             channel: channelId,
             text: summary
         });
@@ -35,11 +30,6 @@ async function processScheduleCommand(payload) {
         console.error('Error processing command:', error);
     }
 }
-
-// Export the function so server.js can use it
-module.exports = {
-    processScheduleCommand
-};
 
 // 1. Fetch Stats
 export async function generateSlackStats(channelId, clientInstance = client) {
@@ -89,11 +79,6 @@ export async function saveToDB(channelId, stats) {
 export async function postSummary(channelId, stats, clientInstance = client, title = "Daily Metrics Summary") {
     const displayDate = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-    const tableString =
-        `Date       | Reactions | Joined | Words
------------|-----------|--------|-------
-${displayDate.padEnd(11)}| ${stats.totalEmojis.toString().padEnd(10)}| ${stats.totalJoins.toString().padEnd(7)}| ${stats.totalWords}`;
-
     await clientInstance.chat.postMessage({
         channel: channelId,
         text: `${title} for ${displayDate}`,
@@ -102,12 +87,25 @@ ${displayDate.padEnd(11)}| ${stats.totalEmojis.toString().padEnd(10)}| ${stats.t
                 type: "header",
                 text: { type: "plain_text", text: `📊 ${title}` }
             },
+            { type: "divider" },
             {
-                type: "section",
-                text: {
-                    type: "mrkdwn",
-                    text: "```" + tableString + "```"
-                }
+                type: "rich_text",
+                elements: [
+                    {
+                        type: "rich_text_section",
+                        elements: [
+                            { type: "text", text: `Report for ${displayDate}\n\n`, style: { bold: true } }
+                        ]
+                    },
+                    {
+                        type: "rich_text_preformatted",
+                        elements: [
+                            { type: "text", text: "Date       | Reactions | Joined | Words\n" },
+                            { type: "text", text: "-----------|-----------|--------|-------\n" },
+                            { type: "text", text: `${displayDate.padEnd(11)}| ${stats.totalEmojis.toString().padEnd(10)}| ${stats.totalJoins.toString().padEnd(7)}| ${stats.totalWords}` }
+                        ]
+                    }
+                ]
             }
         ]
     });
