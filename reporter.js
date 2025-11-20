@@ -1,52 +1,27 @@
-// reporter.js
-// This file requires the following package: npm install @slack/web-api dotenv mysql2
-
 import { WebClient } from "@slack/web-api";
 import dotenv from "dotenv";
-//import { insertDailyReport } from "./databasejs.js"; // Import the database function
-dotenv.config();  //executes the function that reads the key-value pairs from the environment file and attaches them to process.env
+import { insertDailyReport } from "./databasejs.js"; // Standard Import
 
-// --- Configuration ---
+dotenv.config();
+
 const TARGET_CHANNEL_ID = process.env.REPORT_CHANNEL_ID; 
-
-// Initialize the Slack Web Client
 const client = new WebClient(process.env.SLACK_BOT_TOKEN);
 
-/**
- * Fetches channel history for the last 24 hours, calculates metrics, saves to DB, and posts a summary.
- */
-async function generateDailySummary() 
-{
-    // Calculate Unix timestamp for 24 hours ago
-    const dbModule = await import("./databasejs.js");
-    const insertDailyReport = dbModule.insertDailyReport;
-    let totalMembers = 0;
-    try {
-        const infoResponse = await client.conversations.info({
-            channel: TARGET_CHANNEL_ID
-        });
-        if (infoResponse.ok && infoResponse.channel) {
-            // conversations.info returns num_members
-            totalMembers = infoResponse.channel.num_members || 0;
-        }
-    } 
-    catch (e) {
-        console.error("Error fetching total channel members:", e.message);
-    }
+export async function generateDailySummary() {
+    console.log("Starting Daily Summary Generation...");
+    
+    // 1. Setup Dates
+    const twentyFourHoursAgo = (Math.floor(Date.now() / 1000) - 24 * 60 * 60).toString();
+    const dbDate = new Date().toISOString().split('T')[0];
+    const displayDate = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-    const twentyFourHoursAgo = (
-        Math.floor(Date.now() / 1000) -
-        24 * 60 * 60
-    ).toString();
-
+    // 2. Calculate Metrics
     let totalWords = 0;
     let totalEmojis = 0;
     let totalJoins = 0;
     let cursor;
 
-
     try {
-        // 1. Fetching Data and Counting Metrics (Unchanged)
         do {
             const response = await client.conversations.history({
                 channel: TARGET_CHANNEL_ID,
@@ -55,9 +30,7 @@ async function generateDailySummary()
                 cursor: cursor,
             });
 
-            if (!response.ok || !response.messages) {
-                throw new Error(`Slack API Error: ${response.error}`);
-            }
+            if (!response.ok) throw new Error(response.error);
 
             for (const message of response.messages) {
                 if (message.type === "message" && message.text) {
@@ -65,91 +38,46 @@ async function generateDailySummary()
                     totalWords += words.length;
                 }
                 if (message.reactions) {
-                    totalEmojis += message.reactions.reduce((sum, reaction) => sum + reaction.count, 0);
+                    totalEmojis += message.reactions.reduce((sum, r) => sum + r.count, 0);
                 }
                 if (message.subtype === "channel_join") {
                     totalJoins += 1;
                 }
             }
             cursor = response.response_metadata?.next_cursor;
-        } 
-        while 
-        (cursor);
+        } while (cursor);
 
-        // --- DATABASE SAVE ---
-        const dbDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD for MySQL DATE type
-        try {
-            await insertDailyReport(dbDate, totalJoins, totalEmojis, totalWords);
-            console.log(`[DB] Successfully saved report for ${dbDate}.`);
-        } catch (dbError) {
-            console.error("CRITICAL: Failed to save report to database.", dbError);
-        }
-        // --- END DATABASE SAVE ---
+        // 3. Save to DB
+        await insertDailyReport(dbDate, totalJoins, totalEmojis, totalWords);
 
-
-        // 3. Post the Final Summary Message (Using 4 sections for guaranteed 4-column alignment)
-        const reportDate = new Date().toLocaleDateString("en-US", {
-            month: "short", 
-            day: "numeric", 
-            year: "numeric"
-        });
+        // 4. Format Message (Using Code Block for Table Alignment)
+        // Slack "Table" blocks do not exist in the standard API. We use formatting.
+        const tableString = 
+`Date       | Reactions | Joined | Words
+-----------|-----------|--------|-------
+${displayDate.padEnd(11)}| ${totalEmojis.toString().padEnd(10)}| ${totalJoins.toString().padEnd(7)}| ${totalWords}`;
 
         await client.chat.postMessage({
             channel: TARGET_CHANNEL_ID,
-            text: `Daily Metrics Summary Report for ${reportDate}`, 
+            text: `Daily Metrics for ${displayDate}`,
             blocks: [
                 {
                     type: "header",
+                    text: { type: "plain_text", text: "📊 Daily Metrics Summary" }
+                },
+                {
+                    type: "section",
                     text: {
-                        type: "plain_text",
-                        text: "📊 Daily Metrics Summary Report"
+                        type: "mrkdwn",
+                        text: "```" + tableString + "```" // Triple backticks make a nice table
                     }
-                },
-                {
-                    type: "divider"
-                },
-                {
-                    // Using the table block for consistent 4-column layout
-                    "type": "table",
-                    "rows": [
-                        // ROW 1: HEADERS
-                        [
-                            { "type": "raw_text", "text": "Date" },
-                            { "type": "raw_text", "text": "Total Reactions" },
-                            { "type": "raw_text", "text": "People Joined" },
-                            { "type": "raw_text", "text": "Words Used" }
-                        ],
-                        // ROW 2: DATA (Using the calculated variables)
-                        [
-                            { "type": "raw_text", "text": reportDate },
-                            { "type": "raw_text", "text": totalEmojis.toString() },
-                            { "type": "raw_text", "text": totalJoins.toString() },
-                            { "type": "raw_text", "text": totalWords.toString() }
-                        ]
-                    ],
-                    // Define alignment for each column
-                    "column_settings": [
-                        { "align": "left" },
-                        { "align": "center" },
-                        { "align": "center" },
-                        { "align": "right" }
-                    ]
-                },
-                { 
-                    type: "divider" 
                 }
             ]
         });
 
-        console.log(`Report successfully posted to Slack.`);
+        console.log(`[Slack] Report posted successfully.`);
 
-    } 
-    catch (error)
-     {
-        console.error("Failed to run daily report (Slack logic):", error);
+    } catch (error) {
+        console.error("Error generating daily report:", error);
     }
 }
-
-// Execute the function
-// Export the function for external use (e.g. scheduler in server.js)
-export { generateDailySummary };
