@@ -7,7 +7,7 @@ import { generateDailySummary } from "./reporter.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.APP_PORT || 3000;
+const PORT = process.env.PORT || 3000;
 const SLACK_VERIFICATION_TOKEN = process.env.SLACK_VERIFICATION_TOKEN;
 
 app.use(bodyParser.urlencoded({ extended: true }));
