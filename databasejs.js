@@ -51,7 +51,7 @@ export async function insertDailyReport(dateString, joins, emojis, words) {
         ON DUPLICATE KEY UPDATE
             people_joined = VALUES(people_joined),
             total_reactions = VALUES(total_reactions),
-            words_used = VALUES(words_used);
+            words_used = VALUES(words_used)
     `;
     
     const values = [dateString, joins, emojis, words];
