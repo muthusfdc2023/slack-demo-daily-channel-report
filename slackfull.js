@@ -172,24 +172,19 @@ async function generateDailySummary() {
 /* ================================
    4. SLASH COMMAND (No CRON)
 ================================= */
-const app = express();
-app.use(bodyParser.urlencoded({ extended: true }));
-
-app.post("/slack/command", async (req, res) => {
-    const { command, user_name } = req.body;
-
-    console.log("Slash command received:", command);
-
-    if (command === "/dailyreport") {
-        res.send("⏳ Running Daily Summary Report… It will appear in the channel shortly.");
-
-        try {
-            await generateDailySummary();
-        } catch (err) {
-            console.error("Error running report manually:", err);
-        }
-    } else {
-        res.send("Unknown command.");
+app.command('/dailyreport', async ({ ack, body, client }) => {
+    await ack();
+    const channelId = body.channel_id;
+    try {
+        const stats = await generateSlackStats(channelId, client);
+        await saveToDB(channelId, stats);
+        await postSummary(channelId, stats, client, 'Last 24 hours report (slash)');
+    } catch (err) {
+        console.error('Slash /dailyreport error', err);
+        await client.chat.postMessage({
+            channel: channelId,
+            text: `:warning: Failed to generate report: ${err.message}`
+        });
     }
 });
 

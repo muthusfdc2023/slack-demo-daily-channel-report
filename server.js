@@ -1,37 +1,46 @@
-import express from "express";
+
+import { App } from "@slack/bolt";
 import cron from "node-cron";
-import bodyParser from "body-parser";
 import dotenv from "dotenv";
-import { generateDailySummary } from "./reporter.js";
+import { generateDailySummary, generateSlackStats, saveToDB, postSummary } from "./reporter.js";
 
 dotenv.config();
 
-const app = express();
 const PORT = process.env.PORT || 3000;
-const SLACK_VERIFICATION_TOKEN = process.env.SLACK_VERIFICATION_TOKEN;
 
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// Health Check
-app.get("/", (req, res) => {
-    res.send("Service is running.");
+// Initialize Bolt App
+const app = new App({
+    token: process.env.SLACK_BOT_TOKEN,
+    signingSecret: process.env.SLACK_SIGNING_SECRET,
+    // Render health check support (optional, but good practice)
+    customRoutes: [
+        {
+            path: '/',
+            method: ['GET'],
+            handler: (req, res) => {
+                res.writeHead(200);
+                res.end('Service is running.');
+            },
+        },
+    ],
 });
 
-// Slash Command Endpoint
-app.post("/slack/commands", async (req, res) => {
-    console.log("Incoming Slash Command...");
-
-    // 1. Verify Token
-    if (req.body.token !== SLACK_VERIFICATION_TOKEN) {
-        console.error("Token mismatch!");
-        return res.status(403).send("Access Denied");
+// Slash Command Endpoint (Bolt handles verification)
+app.command('/dailyreport', async ({ ack, body, client }) => {
+    await ack();
+    const channelId = body.channel_id;
+    try {
+        // Use the refactored functions from reporter.js
+        const stats = await generateSlackStats(channelId, client);
+        await saveToDB(channelId, stats);
+        await postSummary(channelId, stats, client, 'Last 24 hours report (slash)');
+    } catch (err) {
+        console.error('Slash /dailyreport error', err);
+        await client.chat.postMessage({
+            channel: channelId,
+            text: `:warning: Failed to generate report: ${err.message}`
+        });
     }
-
-    // 2. ACK immediately (Required by Slack)
-    res.status(200).send("Working on it! 📊 Report will appear shortly.");
-
-    // 3. Run logic in background
-    generateDailySummary();
 });
 
 // Cron Job (Every 5 minutes for testing)
@@ -42,6 +51,7 @@ cron.schedule("*/5 * * * *", () => {
     timezone: "Asia/Kolkata"
 });
 
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-});
+(async () => {
+    await app.start(PORT);
+    console.log(`⚡️ Bolt app is running on port ${PORT}`);
+})();
