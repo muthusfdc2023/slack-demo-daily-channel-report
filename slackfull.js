@@ -1,7 +1,7 @@
 // merged_app.js (Recommended to use .mjs extension or set "type": "module" in package.json)
 
 // --- 1. Imports (Consolidated from all files) ---
-import cron from 'node-cron'; // from server.js
+//import cron from 'node-cron'; // from server.js
 import { WebClient } from "@slack/web-api"; // from reporter.js
 import dotenv from "dotenv"; // from reporter.js
 import mysql from 'mysql2/promise'; // from databasejs.js
@@ -183,13 +183,13 @@ async function generateDailySummary() {
 // --- 4. Scheduler (from server.js) ---
 
 // Schedule the report to run every day at 9:00 AM (e.g., 0 9 * * *)
-cron.schedule('0 9 * * *', () => {
-    console.log('Running daily summary report...');
-    // Calling the function defined in section 3
-    generateDailySummary();
-}, {
-    timezone: "Asia/Kolkata" 
-});
+// cron.schedule('*/5 * * * *', () => {
+//     console.log('Running daily summary report...');
+//     // Calling the function defined in section 3
+//     generateDailySummary();
+// }, {
+//     timezone: "Asia/Kolkata" 
+// });
 
 // Your existing server start code follows (if needed)
 // import express from "express";

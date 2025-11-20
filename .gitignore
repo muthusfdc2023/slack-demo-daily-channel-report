@@ -1,4 +1,5 @@
 /node_modules
+/tmp_push_repo
 .env
 app.js
 db-test.mjs
