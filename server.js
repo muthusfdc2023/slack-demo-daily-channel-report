@@ -3,6 +3,14 @@ import cron from "node-cron";
 import express from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
+import {
+    generateDailySummary,
+    generateSlackStats,
+    saveToDB,
+    postSummary,
+    processScheduleCommand
+} from "./reporter.js";
+import { registerThreadSentimentHandlers } from "./threadSentiment.js";
 
 dotenv.config();
 
@@ -30,14 +38,7 @@ const boltApp = new App({
     ],
 });
 
-// IMPORT FUNCTIONS ---------------------
-import {
-    generateDailySummary,
-    generateSlackStats,
-    saveToDB,
-    postSummary,
-    processScheduleCommand
-} from "./reporter.js";
+registerThreadSentimentHandlers(boltApp);
 
 // SLASH COMMAND ------------------------
 boltApp.command('/dailyreport', async ({ ack, body, client }) => {
